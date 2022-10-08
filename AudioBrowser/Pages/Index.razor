@@ -1,0 +1,71 @@
+﻿@page "/"
+@using Microsoft.AspNetCore.Components.QuickGrid
+@using NeoSmart.PrettySize
+@inject MediaFiles MediaFiles
+
+<menu>
+    <span>Folder:</span>
+    <button class="folder-button" @onclick="OpenDir">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1117 734"><defs><clipPath id="clip0"><rect x="1227" y="1389" width="1117" height="734" /></clipPath><linearGradient x1="1727.5" y1="1389" x2="1727.5" y2="2123" gradientUnits="userSpaceOnUse" spreadMethod="reflect" id="fill1"><stop offset="0" stop-color="#FEC724" /><stop offset="0.69" stop-color="#FEC724" /><stop offset="1" stop-color="#FFFFFF" /></linearGradient><linearGradient x1="1786" y1="1601" x2="1786" y2="2123" gradientUnits="userSpaceOnUse" spreadMethod="reflect" id="fill2"><stop offset="0" stop-color="#F89C06" /><stop offset="0.0454545" stop-color="#F79B05" /><stop offset="0.0909091" stop-color="#F79B05" /><stop offset="0.136364" stop-color="#F79B05" /><stop offset="0.181818" stop-color="#F79B05" /><stop offset="0.227273" stop-color="#F69B05" /><stop offset="0.272727" stop-color="#F59A05" /><stop offset="0.318182" stop-color="#F59A05" /><stop offset="0.363636" stop-color="#F49905" /><stop offset="0.409091" stop-color="#F39905" /><stop offset="0.454545" stop-color="#F29805" /><stop offset="0.5" stop-color="#F19705" /><stop offset="0.545455" stop-color="#F09705" /><stop offset="0.590909" stop-color="#EF9605" /><stop offset="0.636364" stop-color="#EE9505" /><stop offset="0.681818" stop-color="#EC9405" /><stop offset="0.727273" stop-color="#EB9305" /><stop offset="0.772727" stop-color="#E99205" /><stop offset="0.818182" stop-color="#E89105" /><stop offset="0.863636" stop-color="#E69005" /><stop offset="0.909091" stop-color="#E48F05" /><stop offset="0.954545" stop-color="#E28E05" /><stop offset="1" stop-color="#E18D05" /></linearGradient></defs><g clip-path="url(#clip0)" transform="translate(-1227 -1389)"><path d="M1265.16 1389 1583.64 1390.77C1598.52 1401.07 1628.93 1427.11 1661.13 1456.74L1688.34 1482.35 2177.21 1482.35C2205.26 1482.35 2228 1505.07 2228 1533.1L2228 2072.25C2228 2100.28 2205.26 2123 2177.21 2123L1277.79 2123C1249.74 2123 1227 2100.28 1227 2072.25L1227 1935.55 1227 1533.1 1227 1427.13C1227 1406.07 1244.08 1389 1265.16 1389Z" fill="url(#fill1)" fill-rule="evenodd" /><path d="M1359.79 1662.3C1374.79 1611.09 1398.93 1601 1423.13 1601L2311.49 1602.62C2347.21 1600.95 2348.52 1624.48 2338.87 1661.48 2298.35 1830.24 2278.09 1924.65 2229.05 2081.71 2217.76 2112.7 2209.43 2123 2185.24 2123L1271.81 2123C1247.61 2123 1228 2104.51 1228 2081.71L1359.79 1662.3Z" fill="url(#fill2)" fill-rule="evenodd" /></g></svg>
+        @(name ?? "Open...")
+    </button>
+    @if (files is not null)
+    {
+        <span>@files.Count() files</span>
+    }
+</menu>
+
+<section class="grid-area">
+    @if (files is not null)
+    {
+        <QuickGrid Items="@FilteredFiles" Class="files-grid" Virtualize="true" ItemSize="64">
+            <PropertyColumn Property="@(f => f.Name)" Sortable="true">
+                <ColumnOptions>
+                    <div class="search-box">
+                        <input type="search" @bind="searchName" @bind:event="oninput"
+                           autofocus placeholder="Name..." />
+                    </div>
+                </ColumnOptions>
+            </PropertyColumn>
+            <PropertyColumn Title="Size" Property="@(f => new PrettySize(f.Size))" Sortable="true" />
+            <PropertyColumn Title="Modified" Property="@(f => f.LastModified)" Sortable="true" />
+            <TemplateColumn Title="Preview">
+                <AudioPreview File="@context" />
+            </TemplateColumn>
+        </QuickGrid>
+    }
+</section>
+
+@code {
+    string? name;
+    IQueryable<MediaFiles.JSFile>? files;
+    string? searchName;
+
+    IQueryable<MediaFiles.JSFile>? FilteredFiles => string.IsNullOrWhiteSpace(searchName)
+        ? files
+        : files?.Where(f => f.Name.Contains(searchName, StringComparison.CurrentCultureIgnoreCase));
+
+    protected override async Task OnInitializedAsync()
+    {
+        await using var dir = await MediaFiles.ReopenLastDirectory();
+        if (dir is not null)
+        {
+            name = dir.Name;
+            files = (await MediaFiles.GetFilesAsync(dir)).AsQueryable();
+        }
+    }
+
+    async Task OpenDir()
+    {
+        try
+        {
+            await using var dir = await MediaFiles.ShowDirectoryPicker();
+            name = dir.Name;
+            files = (await MediaFiles.GetFilesAsync(dir)).AsQueryable();
+        }
+        catch
+        {
+            // User cancelled
+        }
+    }
+}
