@@ -35,7 +35,7 @@ export async function decodeAudioFile(name) {
     const fileBytes = await file.arrayBuffer();
 
     // Decode and extract the audio samples
-    const audioBuffer = await new AudioContext().decodeAudioData(fileBytes);
+    const audioBuffer = await new OfflineAudioContext(2, 44100, 44100).decodeAudioData(fileBytes);
     return new Uint8Array(audioBuffer.getChannelData(0).buffer);
 }
 
